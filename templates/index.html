@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="id" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edurobo Chat</title>
+
+    <!-- Google Fonts: Poppins untuk kesan Modern -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        body {
+            background-color: #0f111a;
+            /* Warna latar belakang sangat gelap */
+            background-image: radial-gradient(circle at top right, rgba(30, 58, 138, 0.2), transparent 40%),
+                radial-gradient(circle at bottom left, rgba(139, 92, 246, 0.15), transparent 40%);
+            font-family: 'Poppins', sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            color: #e2e8f0;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 650px;
+            background: #1e1e2f;
+            border: 1px solid #2a2b3d;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 85vh;
+            /* Responsive height */
+        }
+
+        /* Header dengan efek Glassmorphism */
+        .chat-header {
+            background: rgba(30, 30, 47, 0.85);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #2a2b3d;
+            padding: 18px 25px;
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #fff;
+            z-index: 10;
+        }
+
+        .bot-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            box-shadow: 0 4px 10px rgba(118, 75, 162, 0.4);
+        }
+
+        .chat-box {
+            flex: 1;
+            overflow-y: auto;
+            padding: 25px;
+            scroll-behavior: smooth;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.bot {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 80%;
+            padding: 14px 20px;
+            border-radius: 18px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Bubble User: Gradien Biru-Ungu Modern */
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #0061ff 0%, #60efff 100%);
+            color: #000;
+            font-weight: 500;
+            border-bottom-right-radius: 4px;
+        }
+
+        /* Bubble Bot: Dark Gray transparan */
+        .message.bot .message-bubble {
+            background: #27293d;
+            border: 1px solid #34364c;
+            color: #d1d5db;
+            border-bottom-left-radius: 4px;
+        }
+
+        /* Styling Markdown dalam Bubble Bot */
+        .message-bubble strong {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .message-bubble p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message-bubble ul,
+        .message-bubble ol {
+            margin-bottom: 0;
+            padding-left: 20px;
+            margin-top: 8px;
+        }
+
+        .message-bubble li {
+            margin-bottom: 6px;
+        }
+
+        /* Area Input */
+        .chat-input {
+            padding: 20px 25px;
+            background: #1e1e2f;
+            border-top: 1px solid #2a2b3d;
+        }
+
+        .input-group {
+            background: #13141f;
+            border-radius: 30px;
+            padding: 5px;
+            border: 1px solid #2a2b3d;
+            transition: all 0.3s ease;
+        }
+
+        .input-group:focus-within {
+            border-color: #60efff;
+            box-shadow: 0 0 15px rgba(96, 239, 255, 0.2);
+        }
+
+        .form-control {
+            background: transparent !important;
+            border: none !important;
+            color: #fff !important;
+            box-shadow: none !important;
+            padding-left: 20px;
+        }
+
+        .form-control::placeholder {
+            color: #6b7280;
+        }
+
+        /* Tombol Kirim: Eye Catching & Glowing */
+        .btn-send {
+            background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(79, 172, 254, 0.5);
+            cursor: pointer;
+        }
+
+        .btn-send:hover {
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 0 25px rgba(79, 172, 254, 0.8);
+        }
+
+        .btn-send:active {
+            transform: scale(0.95);
+        }
+
+        /* Custom Scrollbar Dark Mode */
+        .chat-box::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-box::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-box::-webkit-scrollbar-thumb {
+            background: #34364c;
+            border-radius: 10px;
+        }
+
+        .chat-box::-webkit-scrollbar-thumb:hover {
+            background: #4b4e6d;
+        }
+
+        /* Animasi mengetik Bot */
+        .typing-indicator span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: #60efff;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: bounce 1.3s linear infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: -1.1s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: -0.9s;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+            }
+
+            30% {
+                transform: translateY(-4px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="chat-container">
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="bot-avatar">
+                <i class="fa-solid fa-robot text-white"></i>
+            </div>
+            <div>
+                <div style="line-height: 1;">Edurobo</div>
+                <small style="font-size: 0.75rem; color: #60efff; font-weight: 400;">
+                    <i class="fa-solid fa-circle text-success" style="font-size: 0.5rem; margin-right: 4px;"></i>Online
+                </small>
+            </div>
+        </div>
+
+        <!-- Area Chat -->
+        <div class="chat-box" id="chat-box">
+            <div class="message bot">
+                <div class="message-bubble" id="welcome-message"></div>
+            </div>
+        </div>
+
+        <!-- Area Input -->
+        <div class="chat-input">
+            <div class="input-group">
+                <input type="text" id="user-input" class="form-control" placeholder="Tanyakan sesuatu pada Edurobo..."
+                    autocomplete="off">
+                <button class="btn-send" id="send-btn" onclick="sendMessage()">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // --- KODE GENERATE UUID TETAP SAMA ---
+        function generateUUID() {
+            if (crypto && crypto.randomUUID) {
+                return crypto.randomUUID();
+            }
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        let currentConversationId = sessionStorage.getItem('edurobo_session_id');
+        if (!currentConversationId) {
+            currentConversationId = generateUUID();
+            sessionStorage.setItem('edurobo_session_id', currentConversationId);
+        }
+
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+
+        // Render pesan selamat datang dengan efek mengetik
+        window.onload = () => {
+            const welcomeText = "Halo! Saya **Edurobo**. Silakan tanya seputar informasi kampus, program kuliah, atau layanan mahasiswa.";
+            const welcomeDiv = document.getElementById('welcome-message');
+            typeWriter(welcomeDiv, welcomeText);
+        };
+
+        userInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // FUNGSI UTAMA UNTUK EFEK MENGETIK
+        async function typeWriter(element, text, speed = 15) {
+            let currentText = "";
+            const textArray = text.split("");
+
+            for (const char of textArray) {
+                currentText += char;
+                // Parse markdown setiap kali karakter bertambah agar tampilan tetap rapi
+                element.innerHTML = marked.parse(currentText);
+
+                // Auto scroll ke bawah saat teks bertambah
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+                // Kecepatan mengetik
+                await new Promise(resolve => setTimeout(resolve, speed));
+            }
+        }
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // 1. Tampilkan pesan user
+            appendMessage('user', message);
+            userInput.value = '';
+
+            // 2. Tampilkan animasi mengetik (Typing Indicator)
+            const typingId = 'typing-' + Date.now();
+            const typingHtml = `<div class="typing-indicator"><span></span><span></span><span></span></div>`;
+            appendMessage('bot', typingHtml, typingId, false);
+
+            try {
+                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                const apiUrl = isLocalhost 
+                    ? 'http://localhost:7861/edurobo/chat' 
+                    : 'https://arnhuggingface-my-ai-agent.hf.space/edurobo/chat';
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        history: [],
+                        conversation_id: currentConversationId
+                    })
+                });
+
+                const data = await response.json();
+
+                // Hapus indikator mengetik
+                document.getElementById(typingId).remove();
+
+                if (data.status_code === 200 || data.response) {
+                    // 3. Buat bubble kosong untuk bot, lalu jalankan efek typewriter
+                    const botMsgDiv = appendMessage('bot', '', '', false);
+                    const bubble = botMsgDiv.querySelector('.message-bubble');
+                    await typeWriter(bubble, data.response);
+                } else {
+                    appendMessage('bot', 'Maaf, terjadi kesalahan dari server AI.', '', false);
+                }
+
+            } catch (error) {
+                console.error("Error:", error);
+                if (document.getElementById(typingId)) document.getElementById(typingId).remove();
+                appendMessage('bot', 'Maaf, gagal terhubung ke server AI Edurobo.', '', false);
+            }
+        }
+
+        function appendMessage(sender, text, id = '', isMarkdown = false) {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('message', sender);
+            if (id) msgDiv.id = id;
+
+            const bubble = document.createElement('div');
+            bubble.classList.add('message-bubble');
+
+            if (isMarkdown) {
+                bubble.innerHTML = marked.parse(text);
+            } else {
+                bubble.innerHTML = text; // Untuk indikator mengetik atau teks biasa
+            }
+
+            msgDiv.appendChild(bubble);
+            chatBox.appendChild(msgDiv);
+
+            chatBox.scrollTo({
+                top: chatBox.scrollHeight,
+                behavior: 'smooth'
+            });
+
+            return msgDiv; // Mengembalikan elemen agar bisa dimanipulasi (untuk typewriter)
+        }
+    </script>
+</body>
+
+</html>
