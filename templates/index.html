@@ -356,15 +356,15 @@
             appendMessage('user', message);
             userInput.value = '';
 
-            // 2. Tampilkan animasi mengetik (Typing Indicator)
+            // 2. Tampilkan animasi mengetik (Typing Indicator)hk
             const typingId = 'typing-' + Date.now();
             const typingHtml = `<div class="typing-indicator"><span></span><span></span><span></span></div>`;
             appendMessage('bot', typingHtml, typingId, false);
 
             try {
                 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                const apiUrl = isLocalhost 
-                    ? 'http://localhost:7861/edurobo/chat' 
+                const apiUrl = isLocalhost
+                    ? 'http://localhost:7861/edurobo/chat'
                     : 'https://arnhuggingface-my-ai-agent.hf.space/edurobo/chat';
 
                 const response = await fetch(apiUrl, {
