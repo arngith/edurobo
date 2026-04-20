@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  edurobo:
+    build: .
+    container_name: edurobo
+    ports:
+      - "7860:7860"
+    restart: always
