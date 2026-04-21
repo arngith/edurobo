@@ -2,8 +2,17 @@ version: '3.8'
 
 services:
   edurobo:
+    image: edurobo
     build: .
     container_name: edurobo
     ports:
-      - "7860:7860"
-    restart: always
+      - "7862:7860"
+    volumes:
+      - .:/home/user/app
+    restart: unless-stopped
+    networks:
+      - edurobo-net
+
+networks:
+  edurobo-net:
+    external: true
