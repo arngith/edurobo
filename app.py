@@ -4,11 +4,7 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)  
 
-# Mematikan caching template agar saat file HTML diedit langsung berubah
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-
-# URL API Edurobo Anda (Bisa diatur melalui Environment Variable, jika tidak default ke localhost)
-API_URL = os.environ.get("API_URL", "http://localhost:7861/edurobo/chat")
 
 @app.route('/')
 def home():
@@ -35,7 +31,6 @@ def chat():
         "conversation_id": ""
     }
 
-    # Cek apakah aplikasi diakses secara lokal (localhost/127.0.0.1)
     if request.host.startswith('localhost') or request.host.startswith('127.0.0.1'):
         api_url = "http://edurobo-api:7860/edurobo/chat"
     else:
@@ -47,7 +42,7 @@ def chat():
         if response_data.get('status_code') == 200:
             bot_reply = response_data.get('response')
         else:
-            bot_reply = "Maaf, terjadi kesalahan dari server AI (Status bukan 200)."
+            bot_reply = "Maaf, terjadi kesalahan dari server AI."
 
     except requests.exceptions.RequestException as e:
         print(f"Error API: {e}")
@@ -56,5 +51,4 @@ def chat():
     return jsonify({'response': bot_reply})
 
 if __name__ == '__main__':
-    #app.run(host='0.0.0.0', port=5000, debug=True)
     app.run(host='0.0.0.0', port=7860, debug=True)
