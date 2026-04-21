@@ -11,8 +11,8 @@ services:
       - .:/home/user/app
     restart: unless-stopped
     networks:
-      - edurobo-net
+      - edurobo-shared-net
 
 networks:
-  edurobo-net:
-    driver: bridge
+  edurobo-shared-net:
+    external: true
