@@ -22,15 +22,13 @@ def chat():
     if request.method == 'OPTIONS':
         return jsonify({}), 200
         
-    data = request.get_json() or {}
+    data = request.get_json()
     user_message = data.get('message')
-    history = data.get('history', [])
-    conversation_id = data.get('conversation_id', "")
     
     payload = {
         "message": user_message,
-        "history": history,
-        "conversation_id": conversation_id
+        "history": [],
+        "conversation_id": ""
     }
 
     if request.host.startswith('localhost') or request.host.startswith('127.0.0.1'):
