@@ -15,4 +15,4 @@ services:
 
 networks:
   edurobo-net:
-    external: true
+    driver: bridge
