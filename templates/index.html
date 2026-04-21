@@ -352,7 +352,8 @@
             appendMessage('bot', typingHtml, typingId, false);
 
             try {
-                const apiUrl = '/edurobo/chat';
+                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                const apiUrl = isLocalhost ? '/edurobo/chat' : 'https://arnhuggingface-edurobo-api.hf.space/edurobo/chat';
                 console.log("Sending to API:", apiUrl);
                 const response = await fetch(apiUrl, {
                     method: 'POST',
