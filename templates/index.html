@@ -309,10 +309,9 @@
             );
         }
 
-        // Fungsi untuk selalu mendapatkan ID yang valid
+
         function getValidSessionId() {
             let id = sessionStorage.getItem('edurobo_session_id');
-            // Jika ID tidak ada, atau cuma string kosong, buat baru!
             if (!id || id.trim() === "" || id === "undefined" || id === "null") {
                 id = generateUUID();
                 sessionStorage.setItem('edurobo_session_id', id);
@@ -352,7 +351,6 @@
             const message = userInput.value.trim();
             if (!message) return;
 
-            // AMBIL ID DISINI (Tepat saat tombol kirim ditekan)
             const activeConversationId = getValidSessionId();
             console.log("Sending with ID:", activeConversationId);
 
