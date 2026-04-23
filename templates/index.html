@@ -297,20 +297,28 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        function generateUUID() {
-            if (crypto && crypto.randomUUID) {
-                return crypto.randomUUID();
-            }
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-                const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
-
         let currentConversationId = sessionStorage.getItem('edurobo_session_id');
         if (!currentConversationId) {
             currentConversationId = generateUUID();
             sessionStorage.setItem('edurobo_session_id', currentConversationId);
+        }
+
+        function generateUUID() {
+            return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+                (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+            );
+        }
+
+        // Fungsi untuk selalu mendapatkan ID yang valid
+        function getValidSessionId() {
+            let id = sessionStorage.getItem('edurobo_session_id');
+            // Jika ID tidak ada, atau cuma string kosong, buat baru!
+            if (!id || id.trim() === "" || id === "undefined" || id === "null") {
+                id = generateUUID();
+                sessionStorage.setItem('edurobo_session_id', id);
+                console.log("Generated New ID:", id);
+            }
+            return id;
         }
 
         const chatBox = document.getElementById('chat-box');
@@ -344,43 +352,43 @@
             const message = userInput.value.trim();
             if (!message) return;
 
+            // AMBIL ID DISINI (Tepat saat tombol kirim ditekan)
+            const activeConversationId = getValidSessionId();
+            console.log("Sending with ID:", activeConversationId);
+
             appendMessage('user', message);
             userInput.value = '';
 
             const typingId = 'typing-' + Date.now();
-            const typingHtml = `<div class="typing-indicator"><span></span><span></span><span></span></div>`;
-            appendMessage('bot', typingHtml, typingId, false);
+            appendMessage('bot', `<div class="typing-indicator"><span></span><span></span><span></span></div>`, typingId, false);
 
             try {
                 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                const apiUrl = isLocalhost ? '/edurobo/chat' : 'https://arnhuggingface-edurobo-api.hf.space/edurobo/chat';
-                console.log("Sending to API:", apiUrl);
+                const apiUrl = isLocalhost ? 'http://localhost:7861/edurobo/chat' : 'https://arnhuggingface-edurobo-api.hf.space/edurobo/chat';
+
+                const payload = {
+                    message: message,
+                    history: [],
+                    conversation_id: activeConversationId // Pastikan key ini sama dengan di models.py
+                };
+
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: message,
-                        history: [],
-                        conversation_id: currentConversationId
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
-
-                document.getElementById(typingId).remove();
+                if (document.getElementById(typingId)) document.getElementById(typingId).remove();
 
                 if (data.status_code === 200 || data.response) {
                     const botMsgDiv = appendMessage('bot', '', '', false);
-                    const bubble = botMsgDiv.querySelector('.message-bubble');
-                    await typeWriter(bubble, data.response);
-                } else {
-                    appendMessage('bot', 'Maaf, terjadi kesalahan dari server AI.', '', false);
+                    await typeWriter(botMsgDiv.querySelector('.message-bubble'), data.response);
                 }
-
             } catch (error) {
                 console.error("Error:", error);
                 if (document.getElementById(typingId)) document.getElementById(typingId).remove();
-                appendMessage('bot', 'Maaf, gagal terhubung ke server AI Edurobo.', '', false);
+                appendMessage('bot', 'Gagal terhubung ke server.', '', false);
             }
         }
 
