@@ -207,6 +207,52 @@
             transform: scale(0.95);
         }
 
+        /* Tombol Mic: Modern & Glow */
+        .btn-mic {
+            background: #27293d;
+            border: 1px solid #34364c;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            color: #60efff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+
+        .btn-mic:hover {
+            background: #34364c;
+            transform: scale(1.05);
+        }
+
+        .btn-mic.active {
+            background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+            color: #fff;
+            border: none;
+            box-shadow: 0 0 20px rgba(255, 65, 108, 0.6);
+            animation: pulse-red 1.5s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(255, 65, 108, 0.7);
+            }
+
+            70% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 10px rgba(255, 65, 108, 0);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(255, 65, 108, 0);
+            }
+        }
+
         /* Custom Scrollbar Dark Mode */
         .chat-box::-webkit-scrollbar {
             width: 6px;
@@ -287,6 +333,9 @@
             <div class="input-group">
                 <input type="text" id="user-input" class="form-control" placeholder="Tanyakan sesuatu pada Edurobo..."
                     autocomplete="off">
+                <button class="btn-mic" id="mic-btn" title="Gunakan Suara">
+                    <i class="fa-solid fa-microphone"></i>
+                </button>
                 <button class="btn-send" id="send-btn" onclick="sendMessage()">
                     <i class="fa-solid fa-paper-plane"></i>
                 </button>
@@ -413,6 +462,195 @@
             });
 
             return msgDiv;
+        }
+
+        // --- VOICE LOGIC (GEMINI LIVE API) ---
+        let voiceSocket;
+        let audioContext;
+        let processor;
+        let micInput;
+        let isVoiceActive = false;
+        let currentVoiceBubble = null;
+        const micBtn = document.getElementById('mic-btn');
+
+        // Fungsi untuk mengupdate teks di chat saat mode suara
+        function updateVoiceMessage(text) {
+            if (!currentVoiceBubble) {
+                const msgDiv = appendMessage('bot', '', 'current-voice-msg', false);
+                currentVoiceBubble = msgDiv.querySelector('.message-bubble');
+            }
+            currentVoiceBubble.innerHTML += text + " ";
+            chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+        }
+
+        micBtn.onclick = () => {
+            if (!isVoiceActive) {
+                startVoiceMode();
+            } else {
+                stopVoiceMode();
+            }
+        };
+
+        async function startVoiceMode() {
+            isVoiceActive = true;
+            micBtn.classList.add('active');
+            appendMessage('bot', 'Mode suara aktif. Silakan bicara...', 'voice-status', false);
+
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = isLocalhost
+                ? `${wsProtocol}//${window.location.hostname}:7861/edurobo/ws/voice`
+                : `wss://arnhuggingface-edurobo-api.hf.space/edurobo/ws/voice`;
+
+            voiceSocket = new WebSocket(wsUrl);
+            voiceSocket.binaryType = 'arraybuffer';
+
+            voiceSocket.onopen = () => console.log("Voice connected");
+            voiceSocket.onmessage = async (event) => {
+                if (event.data instanceof ArrayBuffer) {
+                    // Data Suara
+                    playVoiceChunk(event.data);
+                } else {
+                    // Data Teks (JSON)
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log("📝 Menerima teks dari AI:", data);
+                        if (data.text) {
+                            // Tampilkan teks AI di chat box
+                            updateVoiceMessage(data.text);
+                        }
+                        if (data.turnComplete) {
+                            currentVoiceBubble = null; // Reset bubble untuk giliran berikutnya
+                        }
+                    } catch (e) {
+                        console.error("JSON Parse Error:", e);
+                    }
+                }
+            };
+
+            // Audio Setup (Input)
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            let stream;
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch (err) {
+                console.error("Mic Error:", err);
+                appendMessage('bot', '❌ Gagal mengakses mikrofon. Pastikan mikrofon terpasang dan izin diberikan.', 'voice-error', false);
+                stopVoiceMode();
+                return;
+            }
+
+            micInput = audioContext.createMediaStreamSource(stream);
+
+            // ScriptProcessor untuk mengambil audio mentah
+            processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+            const targetSampleRate = 16000;
+            const sourceSampleRate = audioContext.sampleRate;
+            let lastVolumeLog = 0;
+
+            processor.onaudioprocess = (e) => {
+                if (!isVoiceActive) return;
+                const inputData = e.inputBuffer.getChannelData(0);
+
+                // Monitor Volume (untuk debug)
+                let sum = 0;
+                for (let i = 0; i < inputData.length; i++) sum += inputData[i] * inputData[i];
+                const rms = Math.sqrt(sum / inputData.length);
+                if (Date.now() - lastVolumeLog > 2000) {
+                    console.log("🎤 Mic Volume Level:", rms.toFixed(4));
+                    lastVolumeLog = Date.now();
+                }
+
+                // Resampling sederhana ke 16kHz
+                const resampledData = resampleAudio(inputData, sourceSampleRate, targetSampleRate);
+
+                const pcmData = new Int16Array(resampledData.length);
+                for (let i = 0; i < resampledData.length; i++) {
+                    pcmData[i] = Math.max(-1, Math.min(1, resampledData[i])) * 0x7FFF;
+                }
+
+                if (voiceSocket && voiceSocket.readyState === WebSocket.OPEN) {
+                    voiceSocket.send(pcmData.buffer);
+                }
+            };
+
+            // Sambungkan input mic ke processor
+            micInput.connect(processor);
+            // PERBAIKAN: Gunakan GainNode (Volume 0) agar suara tidak bocor (Echo)
+            const silentNode = audioContext.createGain();
+            silentNode.gain.value = 0; // Mute suara mic ke speaker sendiri
+
+            processor.connect(silentNode);
+            silentNode.connect(audioContext.destination);
+        }
+
+        // Fungsi Resampling Sederhana
+        function resampleAudio(buffer, fromRate, toRate) {
+            if (fromRate === toRate) return buffer;
+            const ratio = fromRate / toRate;
+            const newLength = Math.round(buffer.length / ratio);
+            const result = new Float32Array(newLength);
+            for (let i = 0; i < newLength; i++) {
+                result[i] = buffer[Math.round(i * ratio)];
+            }
+            return result;
+        }
+
+        function stopVoiceMode() {
+            isVoiceActive = false;
+            micBtn.classList.remove('active');
+            if (document.getElementById('voice-status')) document.getElementById('voice-status').remove();
+
+            if (voiceSocket) voiceSocket.close();
+            if (processor) processor.disconnect();
+            if (micInput) micInput.disconnect();
+            if (audioContext) audioContext.close();
+            console.log("Voice stopped");
+        }
+
+        let nextStartTime = 0;
+
+        async function playVoiceChunk(arrayBuffer) {
+            if (!audioContext) return;
+
+            // Pastikan AudioContext aktif
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+
+            const float32Data = new Float32Array(arrayBuffer.byteLength / 2);
+            const int16Data = new Int16Array(arrayBuffer);
+            for (let i = 0; i < int16Data.length; i++) {
+                float32Data[i] = int16Data[i] / 0x7FFF;
+            }
+
+            const buffer = audioContext.createBuffer(1, float32Data.length, 24000);
+            buffer.getChannelData(0).set(float32Data);
+
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+
+            // Booster Volume (2x lipat)
+            const gainNode = audioContext.createGain();
+            gainNode.gain.value = 2.0;
+
+            source.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            // Penjadwalan Audio (Scheduling) agar tidak tumpang tindih
+            const currentTime = audioContext.currentTime;
+            if (nextStartTime < currentTime) {
+                nextStartTime = currentTime + 0.1; // Small buffer
+            }
+
+            source.start(nextStartTime);
+            nextStartTime += buffer.duration;
+
+            // Sembunyikan pesan status awal saat AI mulai bicara
+            const statusMsg = document.querySelector('.voice-status');
+            if (statusMsg) statusMsg.style.display = 'none';
         }
     </script>
 </body>
